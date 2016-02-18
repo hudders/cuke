@@ -1,0 +1,7 @@
+source 'https://rubygems.org'
+gem 'cucumber', '1.3.18'
+gem 'capybara', '2.4.4'
+gem 'selenium-webdriver', '2.44.0'
+gem 'rspec', '3.2.0'
+gem 'poltergeist'
+gem 'capybara-screenshot'

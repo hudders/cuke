@@ -1,0 +1,3 @@
+chrome: "browser=chrome --tag ~@example ~@wip"
+wip: "browser=ff --tag @wip"
+default: "browser=poltergeist"
