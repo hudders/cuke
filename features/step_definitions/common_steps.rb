@@ -6,7 +6,8 @@ end
 Given(/^I have a membership$/) do
 	step "I am signed in"
 	step "I claim Meerkat Movies"
-	click_button("Back to your rewards")
+	expect(page).to have_selector(:link_or_button, "Back to your rewards")
+	click_link_or_button "Back to your rewards", :match => :first
 end	
 
 Given(/^I am( not)? signed in$/) do |negate|
@@ -46,7 +47,7 @@ When(/^I select the ([^"]*) product$/) do |product|
 		find("#product-selection-EN").click
 	when "van insurance"
 		click_button("Show more")
-		find("#product-selection-CV").click
+		find("#product-selection-LC").click
 	when "bike insurance"
 		click_button("Show more")
 		find("#product-selection-BI").click
@@ -75,7 +76,7 @@ When(/^I select the ([^"]*) product$/) do |product|
 		expect(page).to have_no_text("You may only claim one reward for each qualifying purchase.")
 		expect(page).to have_no_text("If you claim a meerkat toy, you must claim within 60 days of the qualifying purchase start date.")
 	when "mobile phone"
-		expect(page).to have_text("If you have switched mobile phone tariff through comparethemarket.com you can only claim MEERKAT MOVIES.")
+		expect(page).to have_text("If you have bought a mobile phone through comparethemarket.com you can only claim MEERKAT MOVIES.")
 		expect(page).to have_no_text("You may only claim one reward for each qualifying purchase.")
 		expect(page).to have_no_text("If you claim a meerkat toy, you must claim within 60 days of the qualifying purchase start date.")
 	else
@@ -83,6 +84,17 @@ When(/^I select the ([^"]*) product$/) do |product|
 		expect(page).to have_text("If you claim a meerkat toy, you must claim within 60 days of the qualifying purchase start date.")
 	end
 	click_button("Choose reward")
+end
+
+When(/^I select the ([^"]*) toy$/) do |toyName|
+	step "I select the car insurance product"
+	case toyName
+	when "AleksandrBatmanToy", "SergeiSupermanToy"
+		find("#productLabel-#{toyName}").click
+	else
+		find("h4", :text => toyName).click
+	end
+	click_button("Confirm details")
 end
 
 When(/^I( try to)? claim (Meerkat Movies|a toy)$/) do |trying, type|
@@ -100,12 +112,32 @@ When(/^I( try to)? claim (Meerkat Movies|a toy)$/) do |trying, type|
 	end
 end
 
-Then(/^I cannot claim (Meerkat Movies|a toy)$/) do |type|
+Then(/^I am able to claim the ([^"]*) toy/) do |toyName|
+	toyPrettyName = case toyName
+					when "AleksandrBatmanToy"
+						"Aleksandr as BatmanTM"
+					when "SergeiSupermanToy"
+						"Sergei as SupermanTM"
+					else
+						toyName
+					end
+	expect(page).to have_text(toyPrettyName)
+	fill_details("Mr","Bob","Marley","rewards.highprob@emailreaction.org","AA")
+	click_button("Claim your reward")
+	expect(page).to have_text(toyPrettyName)
+end
+
+Then(/^I can(not)? claim (Meerkat Movies|a toy|martha reward)$/) do |negate, type|
 	case type
 	when "Meerkat Movies"
-		expect(page).to have_no_css("#choose-meerkat-movies")
+		negate ? (expect(page).to have_no_css("#choose-meerkat-movies"))
+		       : (expect(page).to have_css("#choose-meerkat-movies"))
 	when "a toy"
-		expect(page).to have_no_css(".toy-selection")
+		negate ? (expect(page).to have_no_css(".toy-selection"))
+			   : (expect(page).to have_css(".toy-selection"))
+	when "martha reward"
+		negate ? (expect(page).to have_no_css(".bundle-banner"))
+			   : (expect(page).to have_css(".bundle-banner"))
 	end
 end
 
@@ -128,10 +160,11 @@ Then(/^([^"]*) page is displayed$/) do |pageName|
 	check_page(pageName)
 end
 
-Then(/^"([^"]*)" is opened$/) do |expectedUrl|
+Then(/^"([^"]*)" is opened$/) do |expected|
 	within_window(windows.last) do
-		expect(current_url).to eq(expectedUrl)
+		expect(page).to have_text(expected)
 	end
+	windows.last.close()
 end
 
 def sign_in(email, password)
@@ -157,11 +190,16 @@ def fill_details(title, firstname, lastname, email, brand)
 	if page.has_no_field?("#email[readonly='readonly']") then
 		fill_in "email", with: email
 	end
-	if page.has_text?("Address line 1") then
-		fill_in "manualAddressLine1", with: "2"
-		fill_in "manualAddressTownCity", with: "Malvern"
-		fill_in "manualAddressPostCode", with: "WR14 1AZ"
-	end
+	# if page.has_text?("House number or name") then
+	# 	fill_in "houseNumber", with: "2"
+	# 	fill_in "postcode", with: "WR141AZ"
+	# 	click_button("Find")
+	# end
+	# if page.has_text?("Address line 1") then
+	# 	fill_in "manualAddressLine1", with: "2"
+	# 	fill_in "manualAddressTownCity", with: "Malvern"
+	# 	fill_in "manualAddressPostCode", with: "WR14 1AZ"
+	# end
 	select brand, from: "brand", :match => :first
 	find("#termsLabel").click
 	find("#boughtProductLabel").click
@@ -175,7 +213,9 @@ def jump_to(pageName)
 		visit("/claim")
 	when "Reward"
 		visit("/claim/car-insurance")
-	when "Details"
+	when "Toys Details"
+		visit("/claim/car-insurance/bogdan")
+	when "Movies Details"
 		visit("/claim/car-insurance/meerkat-movies")
 	when "Congratulations", "Validation"
 		visit("/claim/congratulations")
@@ -194,7 +234,7 @@ def check_page(pageName,membership=false)
 		if membership then
 			expect(page).to have_text("")
 		else
-			expect(page).to have_text("We like to reward our customers for purchasing through us. You can become a MEERKAT MOVIES member or get a meerkat toy when you buy a qualifying product through comparethemarket.com.")
+			expect(page).to have_text("We like to reward our customers for purchasing through us. You can choose a reward each time you buy a qualifying product through comparethemarket.com.")
 		end
 	when "Product"
 		expect(page).to have_text("Claiming a reward is easy. First of all please tell us what qualifying product you bought through comparethemarket.com.")
@@ -202,16 +242,16 @@ def check_page(pageName,membership=false)
 		if membership then
 			expect(page).to have_text("Build up your meerkat toy collection and choose one of our thrillsy, claw-stitched cuddly toys.")
 		else
-			expect(page).to have_text("Don't miss out on your rewards. You can take a friend to the cinema with 2 for 1 tickets every week for a whole year with MEERKAT MOVIES or get a meerkat toy.")
+			expect(page).to have_text("Tricky decision? Remember you can claim a new reward every time you buy a qualifying product.")
 		end
-	when "Details"
+	when "Toys Details", "Movies Details", "Details"
 		expect(page).to have_text("Please check your details below to make sure the information is correct.")
 	when "Movies Congratulations"
 		expect(page).to have_text("CONGRATULATIONS")
 	when "Toy Congratulations"
 		expect(page).to have_text("THANK YOU")
 	when "Validation"
-		expect(page).to have_text("Sergei is checking your information")
+		expect(page).to have_text("SERGEI IS CHECKING YOUR INFORMATION")
 	when "History"
 		expect(page).to have_text("Your reward history")
 	when "Invalid Reward"
